@@ -76,7 +76,7 @@ public struct Unet: ResourceManaging {
     ///   - timeStep: Current diffusion timestep
     ///   - hiddenStates: Hidden state to condition on
     /// - Returns: Array of predicted noise residuals
-    func predictNoise(
+    public func predictNoise(
         latents: [MLShapedArray<Float32>],
         timeStep: Int,
         hiddenStates: MLShapedArray<Float32>
