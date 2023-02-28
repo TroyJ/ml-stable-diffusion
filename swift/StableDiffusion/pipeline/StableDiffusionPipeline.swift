@@ -82,6 +82,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
         self.encoder = encoder
         self.safetyChecker = safetyChecker
         self.reduceMemory = reduceMemory
+
+        fatalError("")
     }
 
     /// Load required resources for this pipeline
