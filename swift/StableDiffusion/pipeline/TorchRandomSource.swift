@@ -28,7 +28,7 @@ public struct TorchRandomSource: RandomNumberGenerator, RandomSource {
   /// - Parameters
   ///     - seed: Seed for underlying Mersenne Twister 19937 generator
   /// - Returns random source
-  init(seed: UInt32) {
+  public init(seed: UInt32) {
     state = .init()
     var s = seed & 0xffff_ffff
     for i in 0..<state.key.count {
