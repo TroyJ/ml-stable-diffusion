@@ -40,7 +40,7 @@ public struct TorchRandomSource: RandomNumberGenerator, RandomSource {
   }
 
   /// Generate next UInt32 using fast 32bit Mersenne Twister
-  mutating func nextUInt32() -> UInt32 {
+  public mutating func nextUInt32() -> UInt32 {
     let n = 624
     let m = 397
     let matrixA: UInt64 = 0x9908_b0df
@@ -72,26 +72,26 @@ public struct TorchRandomSource: RandomNumberGenerator, RandomSource {
     return y
   }
 
-  mutating func next() -> UInt64 {
+    public mutating func next() -> UInt64 {
     let high = nextUInt32()
     let low = nextUInt32()
     return (UInt64(high) << 32) | UInt64(low)
   }
 
   /// Generate next random double value
-  mutating func nextDouble() -> Double {
+    public mutating func nextDouble() -> Double {
     let a = next()
     return Double(a & 9_007_199_254_740_991) * (1.0 / 9007199254740992.0)
   }
 
   /// Generate next random float value
-  mutating func nextFloat() -> Float {
+    public mutating func nextFloat() -> Float {
     let a = nextUInt32()
     return Float(a & 16_777_215) * (1.0 / 16777216.0)
   }
 
   /// Generate next random value from a standard normal
-  mutating func nextGauss() -> Double {
+    public mutating func nextGauss() -> Double {
     if let nextGauss = state.nextGauss {
       state.nextGauss = nil
       return nextGauss
@@ -108,7 +108,7 @@ public struct TorchRandomSource: RandomNumberGenerator, RandomSource {
   /// Generates an array of random values from a normal distribution with given mean and standard deviation.
   /// This simulates torch.randn([1, 4, 64, 64], dtype=torch.float), note that for dtype=torch.double, it
   /// will be slightly different.
-  mutating func normalArray(count: Int, mean: Double = 0.0, stdev: Double = 1.0) -> [Double] {
+    public mutating func normalArray(count: Int, mean: Double = 0.0, stdev: Double = 1.0) -> [Double] {
     // If it is smaller than 16 elements, Torch generates from Box-Muller transform directly.
     // Note that even if this is used to generate Float, it will use Double underneath.
     guard count >= 16 else {
@@ -145,7 +145,7 @@ public struct TorchRandomSource: RandomNumberGenerator, RandomSource {
   }
 
   /// Generate a shaped array with scalars from a normal distribution with given mean and standard deviation.
-  mutating func normalShapedArray(_ shape: [Int], mean: Double = 0.0, stdev: Double = 1.0) -> MLShapedArray<Double> {
+    public mutating func normalShapedArray(_ shape: [Int], mean: Double = 0.0, stdev: Double = 1.0) -> MLShapedArray<Double> {
     let count = shape.reduce(1, *)
     return .init(scalars: normalArray(count: count, mean: mean, stdev: stdev), shape: shape)
   }
