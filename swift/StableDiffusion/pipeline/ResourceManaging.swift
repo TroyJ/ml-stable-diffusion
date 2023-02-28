@@ -13,7 +13,7 @@ public protocol ResourceManaging {
 
 extension ResourceManaging {
     /// Request resources are pre-warmed by loading and unloading
-    func prewarmResources() throws {
+    public func prewarmResources() throws {
         try loadResources()
         unloadResources()
     }

@@ -83,7 +83,6 @@ public struct StableDiffusionPipeline: ResourceManaging {
         self.safetyChecker = safetyChecker
         self.reduceMemory = reduceMemory
 
-        fatalError("")
     }
 
     /// Load required resources for this pipeline
