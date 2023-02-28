@@ -116,6 +116,11 @@ public struct StableDiffusionPipeline: ResourceManaging {
         try safetyChecker?.prewarmResources()
     }
 
+    func copyMLShapedArray(_ shapedArray: MLShapedArray<Float32>) -> MLShapedArray<Float32> {
+        let multiArray = MLMultiArray(shapedArray)
+        return MLShapedArray(multiArray)
+    }
+
     public func generateLatentsArray(
             configuration config: Configuration,
             progressHandler: (Progress) -> Bool = { _ in true }
@@ -210,7 +215,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
             var latentsCopy = [MLShapedArray<Float32>]()
             for i in 0..<config.imageCount {
-                latentsCopy[i] = latents[i].copy()
+                var latentCopy = copyMLShapedArray(latents[i])
+                latentsCopy.append(latentCopy)
             }
             latentsArray.append(latentsCopy)
 
