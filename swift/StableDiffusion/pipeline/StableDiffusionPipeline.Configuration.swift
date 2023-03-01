@@ -56,9 +56,9 @@ extension StableDiffusionPipeline {
         }
         
         public init(
-            prompt: String
+            prompt1: String
         ) {
-            self.prompt = prompt
+            self.prompt1 = prompt1
         }
         
     }
