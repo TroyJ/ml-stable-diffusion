@@ -15,7 +15,7 @@ extension StableDiffusionPipeline {
     }
     
     /// Image generation configuration
-    public struct Configuration: Hashable {
+    public struct Configuration {
         
         /// Text prompt to guide sampling.
         public var positivePrompts = [(prompt: String, weight: Float)]()
