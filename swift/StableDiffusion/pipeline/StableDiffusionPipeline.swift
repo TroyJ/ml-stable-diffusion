@@ -130,127 +130,127 @@ public struct StableDiffusionPipeline: ResourceManaging {
     }
 
 
-    public func generateLatentsArray(
-            configuration config: Configuration,
-            progressHandler: (Progress) -> Bool = { _ in
-                true
-            }
-    ) throws -> [[MLShapedArray<Float32>]] {
-
-        var latentsArray = [[MLShapedArray<Float32>]]()
-
-
-        // Encode the input prompt and negative prompt
-        let promptEmbedding = try textEncoder.encode(config.prompt)
-        let negativePromptEmbedding = try textEncoder.encode(config.negativePrompt)
-
-        if reduceMemory {
-            textEncoder.unloadResources()
-        }
-
-        // Convert to Unet hidden state representation
-        // Concatenate the prompt and negative prompt embeddings
-        let concatEmbedding = MLShapedArray<Float32>(
-                concatenating: [negativePromptEmbedding, promptEmbedding],
-                alongAxis: 0
-        )
-
-        let hiddenStates = toHiddenStates(concatEmbedding)
-
-        /// Setup schedulers
-        let scheduler: [Scheduler] = (0..<config.imageCount).map { _ in
-            switch config.schedulerType {
-                case .pndmScheduler: return PNDMScheduler(stepCount: config.stepCount)
-                case .dpmSolverMultistepScheduler: return DPMSolverMultistepScheduler(stepCount: config.stepCount)
-            }
-        }
-        let stdev = scheduler[0].initNoiseSigma
-
-        // Generate random latent samples from specified seed
-        var latents: [MLShapedArray<Float32>]
-        let timestepStrength: Float?
-
-        if
-                let startingImage = config.startingImage,
-                config.mode == .imageToImage {
-            timestepStrength = config.strength
-            guard let encoder else {
-                throw Error.startingImageProvidedWithoutEncoder
-            }
-
-            let noiseTuples = generateImage2ImageLatentSamples(config.imageCount, rng: config.rngType, stdev: 1, seed: config.seed)
-            latents = try noiseTuples.map({
-                try encoder.encode(
-                        image: startingImage,
-                        diagonalNoise: $0.diagonal,
-                        noise: $0.latentNoise,
-                        alphasCumprodStep: scheduler[0].calculateAlphasCumprod(strength: config.strength))
-            })
-        } else {
-            timestepStrength = nil
-            // Generate random latent samples from specified seed
-            latents = generateLatentSamples(config.imageCount, rng: config.rngType, stdev: stdev, seed: config.seed)
-        }
-
-        // De-noising loop
-        let timeSteps: [Int] = scheduler[0].calculateTimesteps(strength: timestepStrength)
-        for (step, t) in timeSteps.enumerated() {
-
-            // Expand the latents for classifier-free guidance
-            // and input to the Unet noise prediction model
-            let latentUnetInput = latents.map {
-                MLShapedArray<Float32>(concatenating: [$0, $0], alongAxis: 0)
-            }
-
-            // Predict noise residuals from latent samples
-            // and current time step conditioned on hidden states
-            var noise = try unet.predictNoise(
-                    latents: latentUnetInput,
-                    timeStep: t,
-                    hiddenStates: hiddenStates
-            )
-
-            noise = performGuidance(noise, config.guidanceScale)
-
-            // Have the scheduler compute the previous (t-1) latent
-            // sample given the predicted noise and current sample
-            for i in 0..<config.imageCount {
-                latents[i] = scheduler[i].step(
-                        output: noise[i],
-                        timeStep: t,
-                        sample: latents[i]
-                )
-            }
-
-            var latentsCopy = [MLShapedArray<Float32>]()
-            for i in 0..<config.imageCount {
-                var latentCopy = copyMLShapedArray(latents[i])
-                latentsCopy.append(latentCopy)
-            }
-            latentsArray.append(latentsCopy)
-
-            // Report progress
-            let progress = Progress(
-                    pipeline: self,
-                    prompt: config.prompt,
-                    step: step,
-                    stepCount: timeSteps.count,
-                    currentLatentSamples: latents,
-                    isSafetyEnabled: canSafetyCheck && !config.disableSafety
-            )
-            if !progressHandler(progress) {
-                // Stop if requested by handler
-                return []
-            }
-        }
-
-        if reduceMemory {
-            unet.unloadResources()
-        }
-
-
-        return latentsArray
-    }
+//    public func generateLatentsArray(
+//            configuration config: Configuration,
+//            progressHandler: (Progress) -> Bool = { _ in
+//                true
+//            }
+//    ) throws -> [[MLShapedArray<Float32>]] {
+//
+//        var latentsArray = [[MLShapedArray<Float32>]]()
+//
+//
+//        // Encode the input prompt and negative prompt
+//        let promptEmbedding = try textEncoder.encode(config.prompt)
+//        let negativePromptEmbedding = try textEncoder.encode(config.negativePrompt)
+//
+//        if reduceMemory {
+//            textEncoder.unloadResources()
+//        }
+//
+//        // Convert to Unet hidden state representation
+//        // Concatenate the prompt and negative prompt embeddings
+//        let concatEmbedding = MLShapedArray<Float32>(
+//                concatenating: [negativePromptEmbedding, promptEmbedding],
+//                alongAxis: 0
+//        )
+//
+//        let hiddenStates = toHiddenStates(concatEmbedding)
+//
+//        /// Setup schedulers
+//        let scheduler: [Scheduler] = (0..<config.imageCount).map { _ in
+//            switch config.schedulerType {
+//                case .pndmScheduler: return PNDMScheduler(stepCount: config.stepCount)
+//                case .dpmSolverMultistepScheduler: return DPMSolverMultistepScheduler(stepCount: config.stepCount)
+//            }
+//        }
+//        let stdev = scheduler[0].initNoiseSigma
+//
+//        // Generate random latent samples from specified seed
+//        var latents: [MLShapedArray<Float32>]
+//        let timestepStrength: Float?
+//
+//        if
+//                let startingImage = config.startingImage,
+//                config.mode == .imageToImage {
+//            timestepStrength = config.strength
+//            guard let encoder else {
+//                throw Error.startingImageProvidedWithoutEncoder
+//            }
+//
+//            let noiseTuples = generateImage2ImageLatentSamples(config.imageCount, rng: config.rngType, stdev: 1, seed: config.seed)
+//            latents = try noiseTuples.map({
+//                try encoder.encode(
+//                        image: startingImage,
+//                        diagonalNoise: $0.diagonal,
+//                        noise: $0.latentNoise,
+//                        alphasCumprodStep: scheduler[0].calculateAlphasCumprod(strength: config.strength))
+//            })
+//        } else {
+//            timestepStrength = nil
+//            // Generate random latent samples from specified seed
+//            latents = generateLatentSamples(config.imageCount, rng: config.rngType, stdev: stdev, seed: config.seed)
+//        }
+//
+//        // De-noising loop
+//        let timeSteps: [Int] = scheduler[0].calculateTimesteps(strength: timestepStrength)
+//        for (step, t) in timeSteps.enumerated() {
+//
+//            // Expand the latents for classifier-free guidance
+//            // and input to the Unet noise prediction model
+//            let latentUnetInput = latents.map {
+//                MLShapedArray<Float32>(concatenating: [$0, $0], alongAxis: 0)
+//            }
+//
+//            // Predict noise residuals from latent samples
+//            // and current time step conditioned on hidden states
+//            var noise = try unet.predictNoise(
+//                    latents: latentUnetInput,
+//                    timeStep: t,
+//                    hiddenStates: hiddenStates
+//            )
+//
+//            noise = performGuidance(noise, config.guidanceScale)
+//
+//            // Have the scheduler compute the previous (t-1) latent
+//            // sample given the predicted noise and current sample
+//            for i in 0..<config.imageCount {
+//                latents[i] = scheduler[i].step(
+//                        output: noise[i],
+//                        timeStep: t,
+//                        sample: latents[i]
+//                )
+//            }
+//
+//            var latentsCopy = [MLShapedArray<Float32>]()
+//            for i in 0..<config.imageCount {
+//                var latentCopy = copyMLShapedArray(latents[i])
+//                latentsCopy.append(latentCopy)
+//            }
+//            latentsArray.append(latentsCopy)
+//
+//            // Report progress
+//            let progress = Progress(
+//                    pipeline: self,
+//                    prompt: config.prompt,
+//                    step: step,
+//                    stepCount: timeSteps.count,
+//                    currentLatentSamples: latents,
+//                    isSafetyEnabled: canSafetyCheck && !config.disableSafety
+//            )
+//            if !progressHandler(progress) {
+//                // Stop if requested by handler
+//                return []
+//            }
+//        }
+//
+//        if reduceMemory {
+//            unet.unloadResources()
+//        }
+//
+//
+//        return latentsArray
+//    }
 
 
     /// Image generation using stable diffusion
