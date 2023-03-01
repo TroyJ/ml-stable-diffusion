@@ -271,7 +271,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         }
         
         var resultScalar = promptEmbeddingScalars[0]
-        for scalarIndex in 0..<promptEmbeddingTotal.scalarCount {
+        for scalarIndex in 0..<promptEmbeddingResult.scalarCount {
             var totalScalar : Double = 0
             for promptIndex in 0..<weights.count {
                 totalScalar += Double(promptEmbeddingScalars[promptIndex][scalarIndex]) * Double(weights[promptIndex])
@@ -379,7 +379,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
             // Report progress
             let progress = Progress(
                     pipeline: self,
-                    prompt: config.prompt1,
+                    prompt: "todo: get text representation for progress",
                     step: step,
                     stepCount: timeSteps.count,
                     currentLatentSamples: latents,
