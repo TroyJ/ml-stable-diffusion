@@ -253,6 +253,35 @@ public struct StableDiffusionPipeline: ResourceManaging {
 //    }
 
 
+    // Performs a weighted sum of the prompt embeddings generated from the prompt strings.
+    public func getPromptEmbedding(_ prompts: [(prompt: String, weight: Float)]) throws -> MLShapedArray<Float32> {
+        var first = true
+        var promptEmbeddingResult : MLShapedArray<Float32>!
+        var promptEmbeddingScalars = [[Float32]]()
+        var weights = [Float]()
+        
+        for (prompt, weight) in prompts {
+            let promptEmbeddingItem = try textEncoder.encode(prompt)
+            if first {
+                first = false
+                promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+            }
+            promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
+            weights.append(weight)
+        }
+        
+        var resultScalar = promptEmbeddingScalars[0]
+        for scalarIndex in 0..<promptEmbeddingTotal.scalarCount {
+            var totalScalar : Double = 0
+            for promptIndex in 0..<weights.count {
+                totalScalar += Double(promptEmbeddingScalars[promptIndex][scalarIndex]) * Double(weights[promptIndex])
+            }
+            resultScalar[scalarIndex] = Float(totalScalar)
+        }
+        promptEmbeddingResult.scalars = resultScalar
+        return promptEmbeddingResult
+    }
+    
     /// Image generation using stable diffusion
     /// - Parameters:
     ///   - disableSafety: Safety checks are only performed if `self.canSafetyCheck && !disableSafety`
@@ -266,22 +295,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
             }
     ) throws -> [CGImage?] {
 
-        // Encode the input prompt and negative prompt
-        let scale1 = config.promptWeight1
-        let scale2 = config.promptWeight2
-        var prompt1Embedding = try textEncoder.encode(config.prompt1)
-        var prompt1EmbeddingScalars = prompt1Embedding.scalars
-        let prompt2EmbeddingScalars = try textEncoder.encode(config.prompt2).scalars
-
-        for index in 0..<prompt1Embedding.scalarCount {
-            prompt1EmbeddingScalars[index]
-                    = prompt1EmbeddingScalars[index] * scale1
-                    + prompt2EmbeddingScalars[index] * scale2
-        }
-        prompt1Embedding.scalars = prompt1EmbeddingScalars
-
-        let promptEmbedding = prompt1Embedding
-        let negativePromptEmbedding = try textEncoder.encode(config.negativePrompt)
+        let positivePromptEmbedding = try getPromptEmbedding(config.positivePrompts)
+        let negativePromptEmbedding = try getPromptEmbedding(config.negativePrompts)
 
         if reduceMemory {
             textEncoder.unloadResources()
@@ -290,7 +305,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         // Convert to Unet hidden state representation
         // Concatenate the prompt and negative prompt embeddings
         let concatEmbedding = MLShapedArray<Float32>(
-                concatenating: [negativePromptEmbedding, promptEmbedding],
+                concatenating: [negativePromptEmbedding, positivePromptEmbedding],
                 alongAxis: 0
         )
 

@@ -17,14 +17,10 @@ extension StableDiffusionPipeline {
     /// Image generation configuration
     public struct Configuration: Hashable {
         
-        /// Text prompt to guide sampling
-        public var prompt1: String
-        public var prompt2: String = ""
-        public var promptWeight1: Float = 1.0
-        public var promptWeight2: Float = 1.0
-
-        /// Negative text prompt to guide sampling
-        public var negativePrompt: String = ""
+        /// Text prompt to guide sampling.
+        public var positivePrompts = [(prompt: String, weight: Float)]()
+        /// Negative text prompt to guide sampling.
+        public var negativePrompts = [(prompt: String, weight: Float)]()
         /// Starting image for image2image or in-painting
         public var startingImage: CGImage? = nil
         //public var maskImage: CGImage? = nil
@@ -55,11 +51,7 @@ extension StableDiffusionPipeline {
             return .imageToImage
         }
         
-        public init(
-            prompt1: String
-        ) {
-            self.prompt1 = prompt1
-        }
+        public init() {}
         
     }
 
