@@ -255,9 +255,13 @@ public struct StableDiffusionPipeline: ResourceManaging {
     ) throws -> [CGImage?] {
 
         // Encode the input prompt and negative prompt
-        let prompt1Embedding = try textEncoder.encode(config.prompt).scale(by: config.promptWeight1)
-        let prompt2Embedding = try textEncoder.encode(config.prompt2).scale(by: (1.0 - config.promptWeight1))
-        let promptEmbedding = prompt1Embedding.add(prompt2Embedding)
+        let scale1 = config.promptWeight1
+        let scale2 = 1.0 - config.promptWeight1
+        let prompt1Embedding = textEncoder.encode(config.prompt)
+        let prompt2Embedding = textEncoder.encode(config.prompt2)
+        
+
+        let promptEmbedding = prompt1Embedding
         let negativePromptEmbedding = try textEncoder.encode(config.negativePrompt)
 
         if reduceMemory {
