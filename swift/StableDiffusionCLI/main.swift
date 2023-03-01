@@ -119,17 +119,18 @@ struct StableDiffusionSample: ParsableCommand {
         let sampleTimer = SampleTimer()
         sampleTimer.start()
 
-        var pipelineConfig = StableDiffusionPipeline.Configuration(prompt: prompt)
+        var pipelineConfig = StableDiffusionPipeline.Configuration()
         
-        pipelineConfig.negativePrompt = negativePrompt
-        pipelineConfig.startingImage = startingImage
-        pipelineConfig.strength = strength
-        pipelineConfig.imageCount = imageCount
-        pipelineConfig.stepCount = stepCount
-        pipelineConfig.seed = seed
-        pipelineConfig.guidanceScale = guidanceScale
-        pipelineConfig.schedulerType = scheduler.stableDiffusionScheduler
-        pipelineConfig.rngType = rng.stableDiffusionRNG
+        fatalError("Command line not supported with advanced weighting options yet.")
+//        pipelineConfig.negativePrompt = negativePrompt
+//        pipelineConfig.startingImage = startingImage
+//        pipelineConfig.strength = strength
+//        pipelineConfig.imageCount = imageCount
+//        pipelineConfig.stepCount = stepCount
+//        pipelineConfig.seed = seed
+//        pipelineConfig.guidanceScale = guidanceScale
+//        pipelineConfig.schedulerType = scheduler.stableDiffusionScheduler
+//        pipelineConfig.rngType = rng.stableDiffusionRNG
         
         let images = try pipeline.generateImages(
             configuration: pipelineConfig,
