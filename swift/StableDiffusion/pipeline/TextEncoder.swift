@@ -4,6 +4,7 @@
 import Foundation
 import CoreML
 
+
 ///  A model for encoding text
 @available(iOS 16.2, macOS 13.1, *)
 public struct TextEncoder: ResourceManaging {
@@ -13,6 +14,7 @@ public struct TextEncoder: ResourceManaging {
 
     /// Embedding model
     var model: ManagedMLModel
+
 
     /// Creates text encoder which embeds a tokenized string
     ///
@@ -28,15 +30,18 @@ public struct TextEncoder: ResourceManaging {
         self.model = ManagedMLModel(modelAt: url, configuration: configuration)
     }
 
+
     /// Ensure the model has been loaded into memory
     public func loadResources() throws {
         try model.loadResources()
     }
 
+
     /// Unload the underlying model to free up memory
     public func unloadResources() {
-       model.unloadResources()
+        model.unloadResources()
     }
+
 
     /// Encode input text/string
     ///
@@ -56,24 +61,28 @@ public struct TextEncoder: ResourceManaging {
             tokens = tokens.dropLast(tokens.count - inputLength)
             ids = ids.dropLast(ids.count - inputLength)
             let truncated = tokenizer.decode(tokens: tokens)
-            print("Needed to truncate input '\(text)' to '\(truncated)'")
+            print("Needed to truncate input: '\(text)'\n                      to: '\(truncated)'")
         }
 
         // Use the model to generate the embedding
         return try encode(ids: ids)
     }
 
+
     /// Prediction queue
     let queue = DispatchQueue(label: "textencoder.predict")
+
 
     func encode(ids: [Int]) throws -> MLShapedArray<Float32> {
         let inputName = inputDescription.name
         let inputShape = inputShape
 
-        let floatIds = ids.map { Float32($0) }
+        let floatIds = ids.map {
+            Float32($0)
+        }
         let inputArray = MLShapedArray<Float32>(scalars: floatIds, shape: inputShape)
         let inputFeatures = try! MLDictionaryFeatureProvider(
-            dictionary: [inputName: MLMultiArray(inputArray)])
+                dictionary: [inputName: MLMultiArray(inputArray)])
 
         let result = try model.perform { model in
             try model.prediction(from: inputFeatures)
@@ -83,6 +92,7 @@ public struct TextEncoder: ResourceManaging {
         return MLShapedArray<Float32>(converting: embeddingFeature!.multiArrayValue!)
     }
 
+
     var inputDescription: MLFeatureDescription {
         try! model.perform { model in
             model.modelDescription.inputDescriptionsByName.first!.value
@@ -90,7 +100,8 @@ public struct TextEncoder: ResourceManaging {
     }
 
     var inputShape: [Int] {
-        inputDescription.multiArrayConstraint!.shape.map { $0.intValue }
+        inputDescription.multiArrayConstraint!.shape.map {
+            $0.intValue
+        }
     }
-
 }
