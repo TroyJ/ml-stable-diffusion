@@ -269,7 +269,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         // Encode the input prompt and negative prompt
         let scale1 = config.promptWeight1
         let scale2 = 1.0 - config.promptWeight1
-        let prompt1Embedding = try textEncoder.encode(config.prompt)
+        var prompt1Embedding = try textEncoder.encode(config.prompt)
         let prompt2Embedding = try textEncoder.encode(config.prompt2)
 
         for index in 0..<prompt1Embedding.scalarCount {
