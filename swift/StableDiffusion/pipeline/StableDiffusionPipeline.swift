@@ -258,8 +258,10 @@ public struct StableDiffusionPipeline: ResourceManaging {
         var first = true
         var promptEmbeddingResult : MLShapedArray<Float32>!
         var promptEmbeddingScalars = [[Float32]]()
-        var weights = [Float]()
+        var weights = [Double]()
+        var totalWeights : Double = 0
         
+        // Get individual embedding scalars.
         for (prompt, weight) in prompts {
             let promptEmbeddingItem = try textEncoder.encode(prompt)
             if first {
@@ -267,14 +269,21 @@ public struct StableDiffusionPipeline: ResourceManaging {
                 promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
             }
             promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
-            weights.append(weight)
+            weights.append(Double(weight))
+            totalWeights += Double(weight)
         }
         
+        // Normalise weights against total weight.
+        for weightIndex in 0..<weights.count {
+            weights[weightIndex] = weights[weightIndex] / totalWeights
+        }
+        
+        // Perform weight sum.
         var resultScalar = promptEmbeddingScalars[0]
         for scalarIndex in 0..<promptEmbeddingResult.scalarCount {
             var totalScalar : Double = 0
             for promptIndex in 0..<weights.count {
-                totalScalar += Double(promptEmbeddingScalars[promptIndex][scalarIndex]) * Double(weights[promptIndex])
+                totalScalar += Double(promptEmbeddingScalars[promptIndex][scalarIndex]) * weights[promptIndex]
             }
             resultScalar[scalarIndex] = Float(totalScalar)
         }
