@@ -6,6 +6,7 @@ import CoreML
 import Accelerate
 import CoreGraphics
 
+
 /// Schedulers compatible with StableDiffusionPipeline
 public enum StableDiffusionScheduler {
     /// Scheduler that uses a pseudo-linear multi-step (PLMS) method
@@ -13,6 +14,7 @@ public enum StableDiffusionScheduler {
     /// Scheduler that uses a second order DPM-Solver++ algorithm
     case dpmSolverMultistepScheduler
 }
+
 
 /// RNG compatible with StableDiffusionPipeline
 public enum StableDiffusionRNG {
@@ -22,17 +24,19 @@ public enum StableDiffusionRNG {
     case torchRNG
 }
 
+
 /// A pipeline used to generate image samples from text input using stable diffusion
 ///
 /// This implementation matches:
 /// [Hugging Face Diffusers Pipeline](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)
 @available(iOS 16.2, macOS 13.1, *)
 public struct StableDiffusionPipeline: ResourceManaging {
-    
+
     public enum Error: String, Swift.Error {
         case startingImageProvidedWithoutEncoder
     }
-    
+
+
     /// Model to generate embeddings for tokenized input text
     var textEncoder: TextEncoder
 
@@ -41,7 +45,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
     /// Model used to generate final image from latent diffusion process
     var decoder: Decoder
-    
+
     /// Model used to latent space for image2image, and soon, in-painting
     var encoder: Encoder?
 
@@ -60,6 +64,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
     ///
     /// This will increase latency in favor of reducing memory
     var reduceMemory: Bool = false
+
 
     /// Creates a pipeline using the specified models and tokenizer
     ///
@@ -82,8 +87,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
         self.encoder = encoder
         self.safetyChecker = safetyChecker
         self.reduceMemory = reduceMemory
-
     }
+
 
     /// Load required resources for this pipeline
     ///
@@ -100,6 +105,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         }
     }
 
+
     /// Unload the underlying resources to free up memory
     public func unloadResources() {
         textEncoder.unloadResources()
@@ -107,6 +113,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         decoder.unloadResources()
         safetyChecker?.unloadResources()
     }
+
 
     // Prewarm resources one at a time
     public func prewarmResources() throws {
@@ -116,18 +123,21 @@ public struct StableDiffusionPipeline: ResourceManaging {
         try safetyChecker?.prewarmResources()
     }
 
+
     func copyMLShapedArray(_ shapedArray: MLShapedArray<Float32>) -> MLShapedArray<Float32> {
         let multiArray = MLMultiArray(shapedArray)
         return MLShapedArray(multiArray)
     }
 
+
     public func generateLatentsArray(
             configuration config: Configuration,
-            progressHandler: (Progress) -> Bool = { _ in true }
+            progressHandler: (Progress) -> Bool = { _ in
+                true
+            }
     ) throws -> [[MLShapedArray<Float32>]] {
 
         var latentsArray = [[MLShapedArray<Float32>]]()
-
 
 
         // Encode the input prompt and negative prompt
@@ -162,8 +172,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
         if
                 let startingImage = config.startingImage,
-                config.mode == .imageToImage
-        {
+                config.mode == .imageToImage {
             timestepStrength = config.strength
             guard let encoder else {
                 throw Error.startingImageProvidedWithoutEncoder
@@ -185,7 +194,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
         // De-noising loop
         let timeSteps: [Int] = scheduler[0].calculateTimesteps(strength: timestepStrength)
-        for (step,t) in timeSteps.enumerated() {
+        for (step, t) in timeSteps.enumerated() {
 
             // Expand the latents for classifier-free guidance
             // and input to the Unet noise prediction model
@@ -243,15 +252,18 @@ public struct StableDiffusionPipeline: ResourceManaging {
         return latentsArray
     }
 
-        /// Image generation using stable diffusion
+
+    /// Image generation using stable diffusion
     /// - Parameters:
     ///   - disableSafety: Safety checks are only performed if `self.canSafetyCheck && !disableSafety`
     ///   - progressHandler: Callback to perform after each step, stops on receiving false response
     /// - Returns: An array of `imageCount` optional images.
     ///            The images will be nil if safety checks were performed and found the result to be un-safe
     public func generateImages(
-        configuration config: Configuration,
-        progressHandler: (Progress) -> Bool = { _ in true }
+            configuration config: Configuration,
+            progressHandler: (Progress) -> Bool = { _ in
+                true
+            }
     ) throws -> [CGImage?] {
 
         // Encode the input prompt and negative prompt
@@ -259,6 +271,12 @@ public struct StableDiffusionPipeline: ResourceManaging {
         let scale2 = 1.0 - config.promptWeight1
         let prompt1Embedding = try textEncoder.encode(config.prompt)
         let prompt2Embedding = try textEncoder.encode(config.prompt2)
+
+        for index in 0..<prompt1Embedding.scalarCount {
+            prompt1Embedding[scalarAt: index]
+                    = prompt1Embedding[scalarAt: index] * scale1
+                    + prompt2Embedding[scalarAt: index] * scale2
+        }
 
 
         let promptEmbedding = prompt1Embedding
@@ -271,8 +289,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
         // Convert to Unet hidden state representation
         // Concatenate the prompt and negative prompt embeddings
         let concatEmbedding = MLShapedArray<Float32>(
-            concatenating: [negativePromptEmbedding, promptEmbedding],
-            alongAxis: 0
+                concatenating: [negativePromptEmbedding, promptEmbedding],
+                alongAxis: 0
         )
 
         let hiddenStates = toHiddenStates(concatEmbedding)
@@ -280,8 +298,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
         /// Setup schedulers
         let scheduler: [Scheduler] = (0..<config.imageCount).map { _ in
             switch config.schedulerType {
-            case .pndmScheduler: return PNDMScheduler(stepCount: config.stepCount)
-            case .dpmSolverMultistepScheduler: return DPMSolverMultistepScheduler(stepCount: config.stepCount)
+                case .pndmScheduler: return PNDMScheduler(stepCount: config.stepCount)
+                case .dpmSolverMultistepScheduler: return DPMSolverMultistepScheduler(stepCount: config.stepCount)
             }
         }
         let stdev = scheduler[0].initNoiseSigma
@@ -289,23 +307,22 @@ public struct StableDiffusionPipeline: ResourceManaging {
         // Generate random latent samples from specified seed
         var latents: [MLShapedArray<Float32>]
         let timestepStrength: Float?
-        
+
         if
-            let startingImage = config.startingImage,
-            config.mode == .imageToImage
-        {
+                let startingImage = config.startingImage,
+                config.mode == .imageToImage {
             timestepStrength = config.strength
             guard let encoder else {
                 throw Error.startingImageProvidedWithoutEncoder
             }
-            
+
             let noiseTuples = generateImage2ImageLatentSamples(config.imageCount, rng: config.rngType, stdev: 1, seed: config.seed)
             latents = try noiseTuples.map({
                 try encoder.encode(
-                    image: startingImage,
-                    diagonalNoise: $0.diagonal,
-                    noise: $0.latentNoise,
-                    alphasCumprodStep: scheduler[0].calculateAlphasCumprod(strength: config.strength))
+                        image: startingImage,
+                        diagonalNoise: $0.diagonal,
+                        noise: $0.latentNoise,
+                        alphasCumprodStep: scheduler[0].calculateAlphasCumprod(strength: config.strength))
             })
         } else {
             timestepStrength = nil
@@ -315,7 +332,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
         // De-noising loop
         let timeSteps: [Int] = scheduler[0].calculateTimesteps(strength: timestepStrength)
-        for (step,t) in timeSteps.enumerated() {
+        for (step, t) in timeSteps.enumerated() {
 
             // Expand the latents for classifier-free guidance
             // and input to the Unet noise prediction model
@@ -326,9 +343,9 @@ public struct StableDiffusionPipeline: ResourceManaging {
             // Predict noise residuals from latent samples
             // and current time step conditioned on hidden states
             var noise = try unet.predictNoise(
-                latents: latentUnetInput,
-                timeStep: t,
-                hiddenStates: hiddenStates
+                    latents: latentUnetInput,
+                    timeStep: t,
+                    hiddenStates: hiddenStates
             )
 
             noise = performGuidance(noise, config.guidanceScale)
@@ -337,20 +354,20 @@ public struct StableDiffusionPipeline: ResourceManaging {
             // sample given the predicted noise and current sample
             for i in 0..<config.imageCount {
                 latents[i] = scheduler[i].step(
-                    output: noise[i],
-                    timeStep: t,
-                    sample: latents[i]
+                        output: noise[i],
+                        timeStep: t,
+                        sample: latents[i]
                 )
             }
 
             // Report progress
             let progress = Progress(
-                pipeline: self,
-                prompt: config.prompt,
-                step: step,
-                stepCount: timeSteps.count,
-                currentLatentSamples: latents,
-                isSafetyEnabled: canSafetyCheck && !config.disableSafety
+                    pipeline: self,
+                    prompt: config.prompt,
+                    step: step,
+                    stepCount: timeSteps.count,
+                    currentLatentSamples: latents,
+                    isSafetyEnabled: canSafetyCheck && !config.disableSafety
             )
             if !progressHandler(progress) {
                 // Stop if requested by handler
@@ -366,27 +383,33 @@ public struct StableDiffusionPipeline: ResourceManaging {
         return try decodeToImages(latents, disableSafety: config.disableSafety)
     }
 
-    private func randomSource(from rng: StableDiffusionRNG, seed: UInt32) -> RandomSource {
+
+    private func randomSource(from rng: StableDiffusionRNG,
+                              seed: UInt32) -> RandomSource {
         switch rng {
-        case .numpyRNG:
-            return NumPyRandomSource(seed: seed)
-        case .torchRNG:
-            return TorchRandomSource(seed: seed)
+            case .numpyRNG:
+                return NumPyRandomSource(seed: seed)
+            case .torchRNG:
+                return TorchRandomSource(seed: seed)
         }
     }
 
-    func generateLatentSamples(_ count: Int, rng: StableDiffusionRNG, stdev: Float, seed: UInt32) -> [MLShapedArray<Float32>] {
+
+    func generateLatentSamples(_ count: Int,
+                               rng: StableDiffusionRNG,
+                               stdev: Float,
+                               seed: UInt32) -> [MLShapedArray<Float32>] {
         var sampleShape = unet.latentSampleShape
         sampleShape[0] = 1
         var random = randomSource(from: rng, seed: seed)
         let samples = (0..<count).map { _ in
             MLShapedArray<Float32>(
-                converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev)))
+                    converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev)))
         }
         return samples
     }
-    
-    
+
+
     /// For image2image -
     /// - Parameters:
     ///   - count: batch size
@@ -395,7 +418,11 @@ public struct StableDiffusionPipeline: ResourceManaging {
     ///   - diagonalAndLatentNoiseIsSame: Diffusions library does not seem to use the same noise for the `DiagonalGaussianDistribution` operation,
     ///     but I have seen implementations of pipelines where it is the same.
     /// - Returns: An array of tuples of noise values with length of batch size.
-    func generateImage2ImageLatentSamples(_ count: Int, rng: StableDiffusionRNG, stdev: Float, seed: UInt32, diagonalAndLatentNoiseIsSame: Bool = false) -> [(diagonal: MLShapedArray<Float32>, latentNoise: MLShapedArray<Float32>)] {
+    func generateImage2ImageLatentSamples(_ count: Int,
+                                          rng: StableDiffusionRNG,
+                                          stdev: Float,
+                                          seed: UInt32,
+                                          diagonalAndLatentNoiseIsSame: Bool = false) -> [(diagonal: MLShapedArray<Float32>, latentNoise: MLShapedArray<Float32>)] {
         var sampleShape = unet.latentSampleShape
         sampleShape[0] = 1
 
@@ -403,48 +430,55 @@ public struct StableDiffusionPipeline: ResourceManaging {
         let samples = (0..<count).map { _ in
             if diagonalAndLatentNoiseIsSame {
                 let noise = MLShapedArray<Float32>(
-                    converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev)))
+                        converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev)))
                 return (noise, noise)
             } else {
                 return (MLShapedArray<Float32>(
-                    converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev))),
+                        converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev))),
                         MLShapedArray<Float32>(
-                            converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev))))
+                                converting: random.normalShapedArray(sampleShape, mean: 0.0, stdev: Double(stdev))))
             }
         }
         return samples
     }
 
+
     func toHiddenStates(_ embedding: MLShapedArray<Float32>) -> MLShapedArray<Float32> {
         // Unoptimized manual transpose [0, 2, None, 1]
         // e.g. From [2, 77, 768] to [2, 768, 1, 77]
         let fromShape = embedding.shape
-        let stateShape = [fromShape[0],fromShape[2], 1, fromShape[1]]
+        let stateShape = [fromShape[0], fromShape[2], 1, fromShape[1]]
         var states = MLShapedArray<Float32>(repeating: 0.0, shape: stateShape)
         for i0 in 0..<fromShape[0] {
             for i1 in 0..<fromShape[1] {
                 for i2 in 0..<fromShape[2] {
-                    states[scalarAt:i0,i2,0,i1] = embedding[scalarAt:i0, i1, i2]
+                    states[scalarAt: i0, i2, 0, i1] = embedding[scalarAt: i0, i1, i2]
                 }
             }
         }
         return states
     }
 
-    func performGuidance(_ noise: [MLShapedArray<Float32>], _ guidanceScale: Float) -> [MLShapedArray<Float32>] {
-        noise.map { performGuidance($0, guidanceScale) }
+
+    func performGuidance(_ noise: [MLShapedArray<Float32>],
+                         _ guidanceScale: Float) -> [MLShapedArray<Float32>] {
+        noise.map {
+            performGuidance($0, guidanceScale)
+        }
     }
 
-    func performGuidance(_ noise: MLShapedArray<Float32>, _ guidanceScale: Float) -> MLShapedArray<Float32> {
+
+    func performGuidance(_ noise: MLShapedArray<Float32>,
+                         _ guidanceScale: Float) -> MLShapedArray<Float32> {
 
         let blankNoiseScalars = noise[0].scalars
         let textNoiseScalars = noise[1].scalars
 
-        var resultScalars =  blankNoiseScalars
+        var resultScalars = blankNoiseScalars
 
         for i in 0..<resultScalars.count {
             // unconditioned + guidance*(text - unconditioned)
-            resultScalars[i] += guidanceScale*(textNoiseScalars[i]-blankNoiseScalars[i])
+            resultScalars[i] += guidanceScale * (textNoiseScalars[i] - blankNoiseScalars[i])
         }
 
         var shape = noise.shape
@@ -452,8 +486,9 @@ public struct StableDiffusionPipeline: ResourceManaging {
         return MLShapedArray<Float32>(scalars: resultScalars, shape: shape)
     }
 
+
     public func decodeToImages(_ latents: [MLShapedArray<Float32>],
-                        disableSafety: Bool) throws -> [CGImage?] {
+                               disableSafety: Bool) throws -> [CGImage?] {
 
         let images = try decoder.decode(latents)
         if reduceMemory {
@@ -481,8 +516,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
         return safeImages
     }
-
 }
+
 
 @available(iOS 16.2, macOS 13.1, *)
 extension StableDiffusionPipeline {
@@ -496,8 +531,8 @@ extension StableDiffusionPipeline {
         public let isSafetyEnabled: Bool
         public var currentImages: [CGImage?] {
             try! pipeline.decodeToImages(
-                currentLatentSamples,
-                disableSafety: !isSafetyEnabled)
+                    currentLatentSamples,
+                    disableSafety: !isSafetyEnabled)
         }
     }
 }
