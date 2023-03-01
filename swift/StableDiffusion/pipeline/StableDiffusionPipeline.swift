@@ -364,7 +364,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
             // Report progress
             let progress = Progress(
                     pipeline: self,
-                    prompt: config.prompt,
+                    prompt: config.prompt1,
                     step: step,
                     stepCount: timeSteps.count,
                     currentLatentSamples: latents,
