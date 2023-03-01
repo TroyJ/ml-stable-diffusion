@@ -18,10 +18,11 @@ extension StableDiffusionPipeline {
     public struct Configuration: Hashable {
         
         /// Text prompt to guide sampling
-        public var prompt: String
+        public var prompt1: String
         public var prompt2: String = ""
         public var promptWeight1: Float = 1.0
-        
+        public var promptWeight2: Float = 1.0
+
         /// Negative text prompt to guide sampling
         public var negativePrompt: String = ""
         /// Starting image for image2image or in-painting
