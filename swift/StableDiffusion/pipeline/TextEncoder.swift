@@ -64,7 +64,6 @@ public struct TextEncoder: ResourceManaging {
             print("Needed to truncate input: '\(text)'")
             print("                      to: '\(truncated)'")
         }
-
         // Use the model to generate the embedding
         return try encode(ids: ids)
     }
