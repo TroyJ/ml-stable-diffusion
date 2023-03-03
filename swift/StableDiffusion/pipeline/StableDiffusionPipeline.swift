@@ -253,6 +253,39 @@ public struct StableDiffusionPipeline: ResourceManaging {
 //    }
 
 
+    // Performs a max of the prompt embeddings generated from the prompt strings.
+    public func getPromptEmbeddingMax(_ prompts: [(prompt: String, weight: Float)]) throws -> MLShapedArray<Float32> {
+        var first = true
+        var promptEmbeddingResult : MLShapedArray<Float32>!
+        var promptEmbeddingScalars = [[Float32]]()
+        var weights = [Float]()
+
+        // Get individual embedding scalars.
+        for (prompt, weight) in prompts {
+            let promptEmbeddingItem = try textEncoder.encode(prompt)
+            if first {
+                first = false
+                promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+            }
+            promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
+            weights.append(weight)
+        }
+        
+        // Perform max sum.
+        var resultScalar = promptEmbeddingScalars[0]
+        for scalarIndex in 0..<promptEmbeddingResult.scalarCount {
+            var maxScalar = resultScalar[scalarIndex]
+            for promptIndex in 0..<weights.count {
+                maxScalar = max(maxScalar,
+                                promptEmbeddingScalars[promptIndex][scalarIndex] * weights[promptIndex])
+            }
+            resultScalar[scalarIndex] = maxScalar
+        }
+        promptEmbeddingResult.scalars = resultScalar
+        return promptEmbeddingResult
+    }
+    
+    
     // Performs a weighted sum of the prompt embeddings generated from the prompt strings.
     public func getPromptEmbedding(_ prompts: [(prompt: String, weight: Float)]) throws -> MLShapedArray<Float32> {
         var first = true
@@ -304,8 +337,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
             }
     ) throws -> [CGImage?] {
 
-        let positivePromptEmbedding = try getPromptEmbedding(config.positivePrompts)
-        let negativePromptEmbedding = try getPromptEmbedding(config.negativePrompts)
+        let positivePromptEmbedding = try getPromptEmbeddingMax(config.positivePrompts)
+        let negativePromptEmbedding = try getPromptEmbeddingMax(config.negativePrompts)
 
         if reduceMemory {
             textEncoder.unloadResources()
