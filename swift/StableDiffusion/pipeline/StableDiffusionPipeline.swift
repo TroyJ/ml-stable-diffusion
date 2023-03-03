@@ -276,7 +276,7 @@ public struct StableDiffusionPipeline: ResourceManaging {
         // Perform max sum.
         var resultScalar = promptEmbeddingScalars[0]
         for scalarIndex in 0..<promptEmbeddingResult.scalarCount {
-            var maxScalar = resultScalar[scalarIndex]
+            var maxScalar = resultScalar[scalarIndex] * weights[0]
             for promptIndex in 0..<weights.count {
                 maxScalar = max(maxScalar,
                                 promptEmbeddingScalars[promptIndex][scalarIndex] * weights[promptIndex])
