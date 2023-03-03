@@ -341,8 +341,8 @@ public struct StableDiffusionPipeline: ResourceManaging {
             }
     ) throws -> [CGImage?] {
 
-        let positivePromptEmbedding = try getPromptEmbeddingMax(config.positivePrompts)
-        let negativePromptEmbedding = try getPromptEmbeddingMax(config.negativePrompts)
+        let positivePromptEmbedding = try getPromptEmbedding(config.positivePrompts)
+        let negativePromptEmbedding = try getPromptEmbedding(config.negativePrompts)
 
         if reduceMemory {
             textEncoder.unloadResources()
