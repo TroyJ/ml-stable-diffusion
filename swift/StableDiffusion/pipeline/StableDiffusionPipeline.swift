@@ -310,10 +310,10 @@ public struct StableDiffusionPipeline: ResourceManaging {
             }
         }
         
-        // Normalise weights against total weight.
-        for weightIndex in 0..<weights.count {
-            weights[weightIndex] = weights[weightIndex] / totalWeights
-        }
+//        // Normalise weights against total weight.
+//        for weightIndex in 0..<weights.count {
+//            weights[weightIndex] = weights[weightIndex] / totalWeights
+//        }
         
         // Perform weight sum.
         var resultScalar = promptEmbeddingScalars[0]
