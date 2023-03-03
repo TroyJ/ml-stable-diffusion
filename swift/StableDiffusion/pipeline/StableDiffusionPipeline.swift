@@ -262,13 +262,15 @@ public struct StableDiffusionPipeline: ResourceManaging {
 
         // Get individual embedding scalars.
         for (prompt, weight) in prompts {
-            let promptEmbeddingItem = try textEncoder.encode(prompt)
-            if first {
-                first = false
-                promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+            if weight != 0 && prompt.trimmingCharacters(in: .whitespacesAndNewlines).count != 0 {
+                let promptEmbeddingItem = try textEncoder.encode(prompt)
+                if first {
+                    first = false
+                    promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+                }
+                promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
+                weights.append(weight)
             }
-            promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
-            weights.append(weight)
         }
         
         // Perform max sum.
@@ -296,14 +298,16 @@ public struct StableDiffusionPipeline: ResourceManaging {
         
         // Get individual embedding scalars.
         for (prompt, weight) in prompts {
-            let promptEmbeddingItem = try textEncoder.encode(prompt)
-            if first {
-                first = false
-                promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+            if weight != 0 && prompt.trimmingCharacters(in: .whitespacesAndNewlines).count != 0 {
+                let promptEmbeddingItem = try textEncoder.encode(prompt)
+                if first {
+                    first = false
+                    promptEmbeddingResult = promptEmbeddingItem // Reuse this item as the result item.
+                }
+                promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
+                weights.append(Double(weight))
+                totalWeights += Double(weight)
             }
-            promptEmbeddingScalars.append(promptEmbeddingItem.scalars)
-            weights.append(Double(weight))
-            totalWeights += Double(weight)
         }
         
         // Normalise weights against total weight.
